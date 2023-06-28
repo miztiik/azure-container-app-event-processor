@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.18.4.5664",
-      "templateHash": "3473578087724377370"
+      "templateHash": "11150232382408146471"
     }
   },
   "parameters": {
@@ -30,7 +30,7 @@
     "vnetParams": {
       "type": "object"
     },
-    "vmParams": {
+    "svc_bus_params": {
       "type": "object"
     },
     "funcParams": {
@@ -157,6 +157,9 @@
             }
           }
         }
+      },
+      "metadata": {
+        "description": "Create Identity"
       }
     },
     {
@@ -312,6 +315,9 @@
             }
           }
         }
+      },
+      "metadata": {
+        "description": "Create Cosmos DB"
       }
     },
     {
@@ -583,6 +589,9 @@
             }
           }
         }
+      },
+      "metadata": {
+        "description": "Create the Log Analytics Workspace"
       }
     },
     {
@@ -741,6 +750,9 @@
             }
           }
         }
+      },
+      "metadata": {
+        "description": "Create Storage Account"
       }
     },
     {
@@ -884,7 +896,113 @@
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_la', parameters('logAnalyticsWorkspaceParams').workspaceName, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness))]",
         "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_sa', parameters('storageAccountParams').storageAccountNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness))]"
-      ]
+      ],
+      "metadata": {
+        "description": "Create Storage Account - Blob container"
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}_{1}_Svc_Bus', parameters('svc_bus_params').name_prefix, parameters('deploymentParams').global_uniqueness)]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "deploymentParams": {
+            "value": "[parameters('deploymentParams')]"
+          },
+          "svc_bus_params": {
+            "value": "[parameters('svc_bus_params')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.18.4.5664",
+              "templateHash": "12676617366686563080"
+            }
+          },
+          "parameters": {
+            "module_metadata": {
+              "type": "object",
+              "defaultValue": {
+                "module_last_updated": "2023-05-19",
+                "owner": "miztiik@github"
+              }
+            },
+            "deploymentParams": {
+              "type": "object"
+            },
+            "svc_bus_params": {
+              "type": "object"
+            },
+            "tags": {
+              "type": "object"
+            }
+          },
+          "variables": {
+            "svc_bus_name": "[replace(format('{0}-{1}-svc-bus-ns-{2}-{3}', parameters('svc_bus_params').name_prefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').enterprise_name_suffix, parameters('deploymentParams').global_uniqueness), '_', '-')]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ServiceBus/namespaces",
+              "apiVersion": "2022-01-01-preview",
+              "name": "[variables('svc_bus_name')]",
+              "location": "[parameters('deploymentParams').location]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard"
+              },
+              "properties": {}
+            },
+            {
+              "type": "Microsoft.ServiceBus/namespaces/queues",
+              "apiVersion": "2022-01-01-preview",
+              "name": "[format('{0}/{1}', variables('svc_bus_name'), format('{0}-q-{1}', parameters('svc_bus_params').name_prefix, parameters('deploymentParams').global_uniqueness))]",
+              "properties": {
+                "lockDuration": "PT5M",
+                "maxSizeInMegabytes": 1024,
+                "requiresDuplicateDetection": false,
+                "requiresSession": false,
+                "deadLetteringOnMessageExpiration": false,
+                "duplicateDetectionHistoryTimeWindow": "PT10M",
+                "maxDeliveryCount": 5,
+                "enablePartitioning": false,
+                "enableExpress": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', variables('svc_bus_name'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "module_metadata": {
+              "type": "object",
+              "value": "[parameters('module_metadata')]"
+            },
+            "svc_bus_ns_name": {
+              "type": "string",
+              "value": "[variables('svc_bus_name')]"
+            },
+            "svc_bus_q_name": {
+              "type": "string",
+              "value": "[format('{0}-q-{1}', parameters('svc_bus_params').name_prefix, parameters('deploymentParams').global_uniqueness)]"
+            }
+          }
+        }
+      },
+      "metadata": {
+        "description": "Create the Service Bus & Queue"
+      }
     },
     {
       "type": "Microsoft.Resources/deployments",
@@ -1529,670 +1647,6 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "[format('{0}_{1}_Vm', parameters('vmParams').vmNamePrefix, parameters('deploymentParams').global_uniqueness)]",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "deploymentParams": {
-            "value": "[parameters('deploymentParams')]"
-          },
-          "uami_name_vm": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_uami', parameters('deploymentParams').enterprise_name_suffix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.uami_name_vm.value]"
-          },
-          "saName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_sa', parameters('storageAccountParams').storageAccountNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.saName.value]"
-          },
-          "blobContainerName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_blob', parameters('storageAccountParams').storageAccountNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.blobContainerName.value]"
-          },
-          "saPrimaryEndpointsBlob": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_sa', parameters('storageAccountParams').storageAccountNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.saPrimaryEndpointsBlob.value]"
-          },
-          "vmParams": {
-            "value": "[parameters('vmParams')]"
-          },
-          "vnetName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_Vnet', parameters('vnetParams').vnetNamePrefix, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.vnetName.value]"
-          },
-          "logAnalyticsPayGWorkspaceId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_la', parameters('logAnalyticsWorkspaceParams').workspaceName, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.logAnalyticsPayGWorkspaceId.value]"
-          },
-          "linDataCollectionEndpointId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_Dce', parameters('dceParams').endpointNamePrefix, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.linDataCollectionEndpointId.value]"
-          },
-          "storeEventsDcrId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_Dcr', parameters('logAnalyticsWorkspaceParams').workspaceName, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.storeEventsDcrId.value]"
-          },
-          "automationEventsDcrId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_Dcr', parameters('logAnalyticsWorkspaceParams').workspaceName, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.automationEventsDcrId.value]"
-          },
-          "add_to_appln_gw": {
-            "value": false
-          },
-          "appln_gw_name": {
-            "value": ""
-          },
-          "appln_gw_back_end_pool_name": {
-            "value": ""
-          },
-          "cosmos_db_accnt_name": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_cosmos_db', parameters('cosmosDbParams').cosmosDbNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.cosmos_db_accnt_name.value]"
-          },
-          "tags": {
-            "value": "[parameters('tags')]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.18.4.5664",
-              "templateHash": "13783858312750640999"
-            }
-          },
-          "parameters": {
-            "module_metadata": {
-              "type": "object",
-              "defaultValue": {
-                "module_last_updated": "2023-06-04",
-                "owner": "miztiik@github"
-              }
-            },
-            "deploymentParams": {
-              "type": "object"
-            },
-            "tags": {
-              "type": "object"
-            },
-            "uami_name_vm": {
-              "type": "string"
-            },
-            "saName": {
-              "type": "string"
-            },
-            "blobContainerName": {
-              "type": "string"
-            },
-            "saPrimaryEndpointsBlob": {
-              "type": "string"
-            },
-            "logAnalyticsPayGWorkspaceId": {
-              "type": "string"
-            },
-            "linDataCollectionEndpointId": {
-              "type": "string"
-            },
-            "storeEventsDcrId": {
-              "type": "string"
-            },
-            "automationEventsDcrId": {
-              "type": "string"
-            },
-            "vmParams": {
-              "type": "object"
-            },
-            "vnetName": {
-              "type": "string"
-            },
-            "vmName": {
-              "type": "string",
-              "defaultValue": "[replace(format('{0}-{1}-{2}-{3}', parameters('vmParams').vmNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').enterprise_name_suffix, parameters('deploymentParams').global_uniqueness), '_', '-')]"
-            },
-            "dnsLabelPrefix": {
-              "type": "string",
-              "defaultValue": "[toLower(format('{0}-{1}-{2}', parameters('vmParams').vmNamePrefix, parameters('deploymentParams').global_uniqueness, uniqueString(resourceGroup().id, parameters('vmName'))))]"
-            },
-            "add_to_appln_gw": {
-              "type": "bool",
-              "defaultValue": false
-            },
-            "appln_gw_name": {
-              "type": "string"
-            },
-            "appln_gw_back_end_pool_name": {
-              "type": "string"
-            },
-            "cosmos_db_accnt_name": {
-              "type": "string"
-            },
-            "blobOwnerRoleId": {
-              "type": "string",
-              "defaultValue": "b7e6dc6d-f1e8-4753-8033-0f276bb0955b"
-            },
-            "metricsPublisherRoleId": {
-              "type": "string",
-              "defaultValue": "3913510d-42f4-4e42-8a64-420c390055eb"
-            }
-          },
-          "variables": {
-            "no_of_vms": "[parameters('vmParams').vmCount]",
-            "userDataScript": "IyEvYmluL2Jhc2gKIyBzZXQgLWV4CnNldCAteApzZXQgLW8gcGlwZWZhaWwKCiMgdmVyc2lvbjogMjZNYXkyMDIzCgojIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIwojIyMjIyMjIyMjIyMjICAgICBTRVQgR0xPQkFMUyAgICAgIyMjIyMjIyMjIyMjIyMjIwojIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIwoKUkVQT19OQU1FPSJhenVyZS13ZWItc2VydmVyLXZtIgoKR0lUX1JFUE9fVVJMPSJodHRwczovL2dpdGh1Yi5jb20vbWl6dGlpay8kUkVQT19OQU1FLmdpdCIKCkFQUF9ESVI9Ii92YXIvJFJFUE9fTkFNRSIKCkxPR19GSUxFPSIvdmFyL2xvZy9taXp0aWlrLWF1dG9tYXRpb24tYm9vdHN0cmFwLSQoZGF0ZSArJyVZLSVtLSVkJykubG9nIgoKIyBodHRwczovL2xlYXJuLm1pY3Jvc29mdC5jb20vZW4tdXMvYXp1cmUvdmlydHVhbC1tYWNoaW5lcy9saW51eC90dXRvcmlhbC1hdXRvbWF0ZS12bS1kZXBsb3ltZW50CgppbnN0cnVjdGlvbigpCnsKICBlY2hvICJ1c2FnZTogLi9idWlsZC5zaCBwYWNrYWdlIDxzdGFnZT4gPHJlZ2lvbj4iCiAgZWNobyAiIgogIGVjaG8gIi9idWlsZC5zaCBkZXBsb3kgPHN0YWdlPiA8cmVnaW9uPiA8cGtnX2Rpcj4iCiAgZWNobyAiIgogIGVjaG8gIi9idWlsZC5zaCB0ZXN0LTx0ZXN0X3R5cGU+IDxzdGFnZT4iCn0KCmxvZ190aGlzKCkgewogICMgQ2FsbGluZyB0aGlzIGZ1bmN0aW9uIGxpa2UgbG9nX3RoaXMgIkJlZ2luIGluc3RhbGxhdGlvbiIgd2lsbCByZXN1bHQgbG9nIGxpa2UgYmVsb3cKICAjIHsidGltZXN0YW1wIjogIjIwMjMtMDQtMTVUMTA6MjI6MjNaIiwgIm1lc3NhZ2UiOiAiQmVnaW4gaW5zdGFsbGF0aW9uIn0KICAgIGxvY2FsIHRpbWVzdGFtcD0kKGRhdGUgLXUgKyIlWS0lbS0lZFQlSDolTTolU1oiKQogICAgbG9jYWwgbWVzc2FnZT0kKHByaW50ZiAnJXMnICIkKiIgfCBzZWQgJ3MvIi9cXCIvZycpICMgRXNjYXBpbmcgZG91YmxlIHF1b3RlcwogICAgcHJpbnRmICd7InRpbWVzdGFtcCI6ICIlcyIsICJtZXNzYWdlIjogIiVzIn1cbicgIiR0aW1lc3RhbXAiICIkbWVzc2FnZSIKfQoKYXNzdW1lX3JvbGUoKSB7CiAgaWYgWyAtbiAiJERFUExPWUVSX1JPTEVfQVJOIiBdOyB0aGVuCiAgICBlY2hvICJBc3N1bWluZyByb2xlICRERVBMT1lFUl9ST0xFX0FSTiAuLi4iCiAgZmkKfQoKdW5hc3N1bWVfcm9sZSgpIHsKICB1bnNldCBUT0tFTgp9CgpmdW5jdGlvbiBjbG9uZV9naXRfcmVwbygpewogIGxvZ190aGlzICJDbG9uaW5nIFJlcG8iCiAgICAjIG1rZGlyIC1wIC92YXIvCiAgICBjZCAvdmFyCiAgICBnaXQgY2xvbmUgJEdJVF9SRVBPX1VSTAogICAgY2QgL3Zhci8kUkVQT19OQU1FCn0KCmZ1bmN0aW9uIGFkZF9lbnZfdmFycygpewogICAgSU1EUz1gY3VybCAtcyAtSCBNZXRhZGF0YTp0cnVlIC0tbm9wcm94eSAiKiIgImh0dHA6Ly8xNjkuMjU0LjE2OS4yNTQvbWV0YWRhdGEvaW5zdGFuY2U/YXBpLXZlcnNpb249MjAyMS0wMi0wMSJgCiAgICBkZWNsYXJlIC1nIFVTRVJfREFUQV9TQ1JJUFQ9YGN1cmwgLUggTWV0YWRhdGE6dHJ1ZSAtLW5vcHJveHkgIioiICJodHRwOi8vMTY5LjI1NC4xNjkuMjU0L21ldGFkYXRhL2luc3RhbmNlL2NvbXB1dGUvdXNlckRhdGE/YXBpLXZlcnNpb249MjAyMS0wMS0wMSZmb3JtYXQ9dGV4dCIgfCBiYXNlNjQgLS1kZWNvZGVgCn0KCmZ1bmN0aW9uIGluc3RhbGxfbGlic19vbl91YnVudHUoKXsKICBsb2dfdGhpcyAiQmVnaW4gQXp1cmUgQ0xJIEluc3RhbGxhdGlvbiIKICAjIGh0dHBzOi8vbGVhcm4ubWljcm9zb2Z0LmNvbS9lbi11cy9jbGkvYXp1cmUvaW5zdGFsbC1henVyZS1jbGktbGludXg/cGl2b3RzPWFwdAogIGN1cmwgLXNMIGh0dHBzOi8vYWthLm1zL0luc3RhbGxBenVyZUNMSURlYiB8IHN1ZG8gYmFzaAoKICAjIEluaXRpYXRlIGF6IGxvZ2luCiAKICBheiBjb25maWcgc2V0IGV4dGVuc2lvbi51c2VfZHluYW1pY19pbnN0YWxsPXllc193aXRob3V0X3Byb21wdAogIGF6IGxvZ2luIC0taWRlbnRpdHkKCiAgbG9nX3RoaXMgIkJlZ2luIGpxLCBnaXQsIHB5dGhvbjMtcGlwIEluc3RhbGxhdGlvbiIKCiAgc3VkbyBhcHQtZ2V0IC15IGluc3RhbGwganEKICBzdWRvIGFwdC1nZXQgLXkgaW5zdGFsbCBnaXQKICBzdWRvIGFwdC1nZXQgLXkgaW5zdGFsbCBweXRob24zLXBpcAogIHN1ZG8gYXB0LWdldCAteSBpbnN0YWxsIG15c3FsLWNsaWVudAoKICAjIHN1ZG8gYXB0LWdldCAteSBweXRob24zIC1tIHBpcCBpbnN0YWxsIC0tdXBncmFkZSBwaXAKICAKICBsb2dfdGhpcyAiRW5kIG9mIGpxLCBnaXQsIHB5dGhvbjMtcGlwIEluc3RhbGxhdGlvbiIKfQoKZnVuY3Rpb24gaW5zdGFsbF9henVyZV9weXRob25fc2RrKCl7CiAgbG9nX3RoaXMgIkJlZ2luIEF6dXJlIFB5dGhvbiBTREsgSW5zdGFsbGF0aW9uIgogIAogIHB5dGhvbjMgLW0gcGlwIGluc3RhbGwgLS1uby1jYWNoZS1kaXIgLS11cGdyYWRlIGluc3RhbGwgYXp1cmUtaWRlbnRpdHkKICBweXRob24zIC1tIHBpcCBpbnN0YWxsIC0tbm8tY2FjaGUtZGlyIC0tdXBncmFkZSBpbnN0YWxsIGF6dXJlLXN0b3JhZ2UtYmxvYgogIHB5dGhvbjMgLW0gcGlwIGluc3RhbGwgLS1uby1jYWNoZS1kaXIgLS11cGdyYWRlIGluc3RhbGwgYXp1cmUtc3RvcmFnZS1xdWV1ZQogIHB5dGhvbjMgLW0gcGlwIGluc3RhbGwgLS1uby1jYWNoZS1kaXIgLS11cGdyYWRlIGluc3RhbGwgYXp1cmUtYXBwY29uZmlndXJhdGlvbi1wcm92aWRlcgogIHB5dGhvbjMgLW0gcGlwIGluc3RhbGwgLS1uby1jYWNoZS1kaXIgLS11cGdyYWRlIGluc3RhbGwgYXp1cmUtY29zbW9zCiAgcHl0aG9uMyAtbSBwaXAgaW5zdGFsbCAtLW5vLWNhY2hlLWRpciAtLXVwZ3JhZGUgaW5zdGFsbCBteXNxbC5jb25uZWN0b3IKICAKICBsb2dfdGhpcyAiRW5kIG9mIEF6dXJlIFB5dGhvbiBTREsgSW5zdGFsbGF0aW9uIgp9CgpmdW5jdGlvbiBpbnN0YWxsX2xpYnMoKXsKICAgICMgUHJlcGFyZSB0aGUgc2VydmVyIGZvciBweXRob24zCiAgICBzdWRvIHl1bSAteSBpbnN0YWxsIGdpdCBqcQogICAgc3VkbyB5dW0gLXkgaW5zdGFsbCBweXRob24zLXBpcAogICAgc3VkbyB5dW0gLXkgaW5zdGFsbCBweXRob24zIAp9CgpmdW5jdGlvbiBpbnN0YWxsX25naW54KCl7CiAgICBzdWRvIGFwdC1nZXQgLXkgdXBkYXRlCiAgICBzdWRvIGFwdC1nZXQgLXkgaW5zdGFsbCBuZ2lueAogICAgc3VkbyBzeXN0ZW1jdGwgc3RhcnQgbmdpbngKICAgIHN1ZG8gc3lzdGVtY3RsIGVuYWJsZSBuZ2lueAoKCiAgICAjIEdldCB0aGUgc2VydmVyIElQIGFkZHJlc3MgYW5kIGhvc3RuYW1lCiAgICBJUF9BRERSRVNTPSQoaG9zdG5hbWUgLUkgfCBhd2sgJ3twcmludCAkMX0nKQogICAgSE9TVE5BTUU9JChob3N0bmFtZSkKCiMgQ3JlYXRlIGhvbGxhLmh0bWwgZmlsZQplY2hvICJob2xsYSIgPiAvdmFyL3d3dy9odG1sL2hvbGxhLmh0bWwKCiMgQ3JlYXRlIE5naW54IGNvbmZpZ3VyYXRpb24gZmlsZQpjYXQgPDwgRU9GID4gL2V0Yy9uZ2lueC9zaXRlcy1hdmFpbGFibGUvbWl6dGlpa2NvbmZpZwpzZXJ2ZXIgewogICAgbGlzdGVuIDgwOwogICAgbGlzdGVuIFs6Ol06ODA7CgogICAgc2VydmVyX25hbWUgeW91cl9kb21haW4uY29tOwoKICAgIHJvb3QgL3Zhci93d3cvaHRtbDsKICAgIGluZGV4IGhvbGxhLmh0bWw7CgogICAgbG9jYXRpb24gLyB7CiAgICAgICAgdHJ5X2ZpbGVzIFwkdXJpIFwkdXJpLyA9NDA0OwogICAgfQp9CkVPRgoKICAgICMgQ3JlYXRlIHN5bWJvbGljIGxpbmsgdG8gZW5hYmxlIHRoZSBjb25maWd1cmF0aW9uCiAgICBzdWRvIGxuIC1zIC9ldGMvbmdpbngvc2l0ZXMtYXZhaWxhYmxlL21penRpaWtjb25maWcgL2V0Yy9uZ2lueC9zaXRlcy1lbmFibGVkLwoKICAgICMgQ3JlYXRlIHRoZSBpbmRleC5odG1sIGZpbGUgd2l0aCB0aGUgZGVzaXJlZCBjb250ZW50CiAgICBzdWRvIHNoIC1jICJlY2hvICdIZWxsbyBXb3JsZCBmcm9tIG1penRpaWstYXV0b21hdGlvbi12bSA8Yj4kSE9TVE5BTUU8L2I+IDxiPiRJUF9BRERSRVNTPC9iPiBvbiAkKGRhdGUpICcgPiAvdmFyL3d3dy9odG1sL2luZGV4Lmh0bWwiCgogICAgIyBTdGFydCB0aGUgbmdpbnggc2VydmljZQogICAgc3VkbyBzZXJ2aWNlIG5naW54IHJlc3RhcnQKICAgIHN1ZG8gc3lzdGVtY3RsIHJlc3RhcnQgbmdpbngKfQoKZnVuY3Rpb24gaW5zdGFsbF9ub2RlanMoKXsKICAgIGN1cmwgLW8tIGh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9udm0tc2gvbnZtL3YwLjM0LjAvaW5zdGFsbC5zaCB8IGJhc2gKICAgIC4gfi8ubnZtL252bS5zaAogICAgbnZtIGluc3RhbGwgbm9kZQogICAgbm9kZSAtZSAiY29uc29sZS5sb2coJ1J1bm5pbmcgTm9kZS5qcyAnICsgcHJvY2Vzcy52ZXJzaW9uKSIKfQoKZnVuY3Rpb24gY2hlY2tfZXhlY3V0aW9uKCl7CiAgSE9TVF9GUUROPSQoaG9zdG5hbWUpCiAgSE9TVF9JUD0kKGhvc3RuYW1lIC1JKQogIENVUlJfUFdEPSQocHdkKQogIENVUlJfVVNFUj0kKHdob2FtaSkKICBDVVJSX1BBVEg9JChlY2hvICRQQVRIKQogIGxvZ190aGlzICJNaXp0aWlrIEN1c3RvbWlzYXRpb24gb2YgSG9zdDogJHtIT1NUX0ZRRE59IC0gJHtIT1NUX0lQfSIKICAjIGxvZ190aGlzICJoZWxsbyIgPj4vdmFyL2xvZy9taXp0aWlrLmxvZwogIGxvZ190aGlzICJDdXJyZW50IFVzZXI6ICR7Q1VSUl9VU0VSfSIKICBsb2dfdGhpcyAiQ3VycmVudCBQV0Q6ICR7Q1VSUl9QV0R9IgogIGxvZ190aGlzICJDdXJyZW50IFBBVEg6ICR7Q1VSUl9QQVRIfSIKfQoKY2hlY2tfZXhlY3V0aW9uICAgICAgICAgICAgICAgICB8ICAgdGVlIC1hICIke0xPR19GSUxFfSIKaW5zdGFsbF9saWJzX29uX3VidW50dSAgICAgICAgICB8ICAgdGVlIC1hICIke0xPR19GSUxFfSIKIyBpbnN0YWxsX2F6dXJlX3B5dGhvbl9zZGsgICAgICAgIHwgICB0ZWUgLWEgIiR7TE9HX0ZJTEV9IgojIGNsb25lX2dpdF9yZXBvICAgICAgICAgICAgICAgICAgfCAgIHRlZSAtYSAiJHtMT0dfRklMRX0iCmluc3RhbGxfbmdpbnggICAgICAgICAgICAgICAgICB8ICAgdGVlIC1hICIke0xPR19GSUxFfSIKCgo=",
-            "LinuxConfiguration": {
-              "disablePasswordAuthentication": true,
-              "ssh": {
-                "publickeys": [
-                  {
-                    "path": "[format('/home/{0}/.ssh/authorized_keys', parameters('vmParams').adminUsername)]",
-                    "keyData": "[parameters('vmParams').adminPassword]"
-                  }
-                ]
-              }
-            },
-            "blobPermsConditionStr": "[format('((!(ActionMatches{{''Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read''}}) AND !(ActionMatches{{''Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write''}}) ) OR (@Resource[Microsoft.Storage/storageAccounts/blobServices/containers:name] StringEquals ''{0}''))', parameters('blobContainerName'))]",
-            "cosmosDbDataContributor_RoleDefinitionId": "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions', parameters('cosmos_db_accnt_name'), '00000000-0000-0000-0000-000000000002')]"
-          },
-          "resources": [
-            {
-              "copy": {
-                "name": "r_publicIp",
-                "count": "[length(range(0, variables('no_of_vms')))]"
-              },
-              "type": "Microsoft.Network/publicIPAddresses",
-              "apiVersion": "2022-05-01",
-              "name": "[format('{0}-pip-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[copyIndex()])]",
-              "location": "[parameters('deploymentParams').location]",
-              "tags": "[parameters('tags')]",
-              "sku": {
-                "name": "[parameters('vmParams').publicIpSku]"
-              },
-              "properties": {
-                "publicIPAllocationMethod": "[parameters('vmParams').publicIPAllocationMethod]",
-                "publicIPAddressVersion": "IPv4",
-                "deleteOption": "Delete",
-                "dnsSettings": {
-                  "domainNameLabel": "[format('{0}-{1}', parameters('dnsLabelPrefix'), range(0, variables('no_of_vms'))[copyIndex()])]"
-                }
-              }
-            },
-            {
-              "type": "Microsoft.Network/networkSecurityGroups",
-              "apiVersion": "2021-05-01",
-              "name": "webSg",
-              "location": "[parameters('deploymentParams').location]",
-              "tags": "[parameters('tags')]",
-              "properties": {
-                "securityRules": [
-                  {
-                    "name": "AllowInboundSsh",
-                    "properties": {
-                      "priority": 250,
-                      "protocol": "Tcp",
-                      "access": "Allow",
-                      "direction": "Inbound",
-                      "sourceAddressPrefix": "*",
-                      "sourcePortRange": "*",
-                      "destinationAddressPrefix": "*",
-                      "destinationPortRange": "22"
-                    }
-                  },
-                  {
-                    "name": "HTTP",
-                    "properties": {
-                      "priority": 200,
-                      "protocol": "Tcp",
-                      "access": "Allow",
-                      "direction": "Inbound",
-                      "sourceAddressPrefix": "*",
-                      "sourcePortRange": "*",
-                      "destinationAddressPrefix": "*",
-                      "destinationPortRange": "80"
-                    }
-                  },
-                  {
-                    "name": "AllowHTTPInbound",
-                    "properties": {
-                      "priority": 100,
-                      "access": "Allow",
-                      "direction": "Inbound",
-                      "protocol": "*",
-                      "sourceAddressPrefix": "Internet",
-                      "sourcePortRange": "*",
-                      "destinationAddressPrefix": "*",
-                      "destinationPortRange": "80"
-                    }
-                  },
-                  {
-                    "name": "Outbound_Allow_All",
-                    "properties": {
-                      "priority": 300,
-                      "protocol": "*",
-                      "access": "Allow",
-                      "direction": "Outbound",
-                      "sourceAddressPrefix": "*",
-                      "sourcePortRange": "*",
-                      "destinationAddressPrefix": "*",
-                      "destinationPortRange": "*"
-                    }
-                  },
-                  {
-                    "name": "AzureResourceManager",
-                    "properties": {
-                      "protocol": "Tcp",
-                      "sourcePortRange": "*",
-                      "destinationPortRange": "443",
-                      "sourceAddressPrefix": "*",
-                      "destinationAddressPrefix": "AzureResourceManager",
-                      "access": "Allow",
-                      "priority": 160,
-                      "direction": "Outbound"
-                    }
-                  },
-                  {
-                    "name": "AzureStorageAccount",
-                    "properties": {
-                      "protocol": "Tcp",
-                      "sourcePortRange": "*",
-                      "destinationPortRange": "443",
-                      "sourceAddressPrefix": "*",
-                      "destinationAddressPrefix": "[format('Storage.{0}', parameters('deploymentParams').location)]",
-                      "access": "Allow",
-                      "priority": 170,
-                      "direction": "Outbound"
-                    }
-                  },
-                  {
-                    "name": "AzureFrontDoor",
-                    "properties": {
-                      "protocol": "Tcp",
-                      "sourcePortRange": "*",
-                      "destinationPortRange": "443",
-                      "sourceAddressPrefix": "*",
-                      "destinationAddressPrefix": "AzureFrontDoor.FrontEnd",
-                      "access": "Allow",
-                      "priority": 180,
-                      "direction": "Outbound"
-                    }
-                  }
-                ]
-              }
-            },
-            {
-              "type": "Microsoft.Insights/diagnosticSettings",
-              "apiVersion": "2021-05-01-preview",
-              "scope": "[format('Microsoft.Network/networkSecurityGroups/{0}', 'webSg')]",
-              "name": "default",
-              "properties": {
-                "workspaceId": "[parameters('logAnalyticsPayGWorkspaceId')]",
-                "logs": [
-                  {
-                    "category": "NetworkSecurityGroupEvent",
-                    "enabled": true,
-                    "retentionPolicy": {
-                      "enabled": false,
-                      "days": 0
-                    }
-                  },
-                  {
-                    "category": "NetworkSecurityGroupRuleCounter",
-                    "enabled": true,
-                    "retentionPolicy": {
-                      "enabled": false,
-                      "days": 0
-                    }
-                  }
-                ]
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/networkSecurityGroups', 'webSg')]"
-              ]
-            },
-            {
-              "copy": {
-                "name": "r_nics_01",
-                "count": "[length(range(0, variables('no_of_vms')))]"
-              },
-              "type": "Microsoft.Network/networkInterfaces",
-              "apiVersion": "2021-08-01",
-              "name": "[format('{0}-nic-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[copyIndex()])]",
-              "location": "[parameters('deploymentParams').location]",
-              "tags": "[parameters('tags')]",
-              "properties": {
-                "ipConfigurations": [
-                  {
-                    "name": "[format('{0}-ipconfig-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[copyIndex()])]",
-                    "properties": {
-                      "primary": true,
-                      "privateIPAddressVersion": "IPv4",
-                      "privateIPAllocationMethod": "Dynamic",
-                      "subnet": {
-                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('vmParams').vmSubnetName)]"
-                      },
-                      "applicationGatewayBackendAddressPools": "[if(parameters('add_to_appln_gw'), createArray(createObject('id', resourceId('Microsoft.Network/applicationGateways/backendAddressPools', parameters('appln_gw_name'), parameters('appln_gw_back_end_pool_name')))), null())]",
-                      "publicIPAddress": {
-                        "id": "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-pip-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[range(0, variables('no_of_vms'))[copyIndex()]]))]"
-                      }
-                    }
-                  }
-                ],
-                "networkSecurityGroup": {
-                  "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'webSg')]"
-                }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-pip-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[range(0, variables('no_of_vms'))[copyIndex()]]))]",
-                "[resourceId('Microsoft.Network/networkSecurityGroups', 'webSg')]"
-              ]
-            },
-            {
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "scope": "[format('Microsoft.Storage/storageAccounts/{0}/blobServices/{1}/containers/{2}', split(format('{0}/default/{1}', parameters('saName'), parameters('blobContainerName')), '/')[0], split(format('{0}/default/{1}', parameters('saName'), parameters('blobContainerName')), '/')[1], split(format('{0}/default/{1}', parameters('saName'), parameters('blobContainerName')), '/')[2])]",
-              "name": "[guid('r_attach_perms_to_role_BlobOwner', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_vm')), parameters('blobOwnerRoleId'))]",
-              "properties": {
-                "description": "Blob Owner Permission to ResourceGroup scope",
-                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', parameters('blobOwnerRoleId'))]",
-                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_vm')), '2023-01-31').principalId]",
-                "conditionVersion": "2.0",
-                "condition": "[variables('blobPermsConditionStr')]",
-                "principalType": "ServicePrincipal"
-              }
-            },
-            {
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "name": "[guid('r_attach_perms_to_role_MetricsPublisher', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_vm')), parameters('metricsPublisherRoleId'))]",
-              "properties": {
-                "description": "Monitoring Metrics Publisher Permission to ResourceGroup scope",
-                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', parameters('metricsPublisherRoleId'))]",
-                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_vm')), '2023-01-31').principalId]",
-                "principalType": "ServicePrincipal"
-              }
-            },
-            {
-              "type": "Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments",
-              "apiVersion": "2021-04-15",
-              "name": "[format('{0}/{1}', parameters('cosmos_db_accnt_name'), guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_vm')), resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmos_db_accnt_name')), variables('cosmosDbDataContributor_RoleDefinitionId')))]",
-              "properties": {
-                "roleDefinitionId": "[variables('cosmosDbDataContributor_RoleDefinitionId')]",
-                "scope": "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmos_db_accnt_name'))]",
-                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_vm')), '2023-01-31').principalId]"
-              }
-            },
-            {
-              "copy": {
-                "name": "r_vms",
-                "count": "[length(range(0, variables('no_of_vms')))]"
-              },
-              "type": "Microsoft.Compute/virtualMachines",
-              "apiVersion": "2021-11-01",
-              "name": "[format('{0}-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[copyIndex()])]",
-              "location": "[parameters('deploymentParams').location]",
-              "zones": [
-                "[string(add(range(0, variables('no_of_vms'))[copyIndex()], 1))]"
-              ],
-              "identity": {
-                "type": "UserAssigned",
-                "userAssignedIdentities": {
-                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_vm')))]": {}
-                }
-              },
-              "properties": {
-                "hardwareProfile": {
-                  "vmSize": "[parameters('vmParams').vmSize]"
-                },
-                "osProfile": {
-                  "computerName": "[format('{0}-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[copyIndex()])]",
-                  "adminUsername": "[parameters('vmParams').adminUsername]",
-                  "adminPassword": "[parameters('vmParams').adminPassword.secureString]",
-                  "linuxConfiguration": "[if(equals(parameters('vmParams').authType, 'password'), null(), variables('LinuxConfiguration'))]"
-                },
-                "storageProfile": {
-                  "imageReference": "[if(equals(parameters('vmParams').isUbuntu, true()), createObject('publisher', 'Canonical', 'offer', '0001-com-ubuntu-server-jammy', 'sku', '22_04-lts-gen2', 'version', 'latest'), createObject('publisher', 'RedHat', 'offer', 'RHEL', 'sku', '91-gen2', 'version', 'latest'))]",
-                  "osDisk": {
-                    "createOption": "FromImage",
-                    "name": "[format('{0}-osDisk-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[copyIndex()])]",
-                    "caching": "ReadWrite",
-                    "deleteOption": "Delete",
-                    "diskSizeGB": 128,
-                    "managedDisk": {
-                      "storageAccountType": "StandardSSD_LRS"
-                    }
-                  },
-                  "dataDisks": [
-                    {
-                      "createOption": "Empty",
-                      "name": "[format('{0}-DataDisk-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[copyIndex()])]",
-                      "caching": "ReadWrite",
-                      "deleteOption": "Delete",
-                      "lun": 13,
-                      "diskSizeGB": 2,
-                      "managedDisk": {
-                        "storageAccountType": "StandardSSD_LRS"
-                      }
-                    }
-                  ]
-                },
-                "networkProfile": {
-                  "networkInterfaces": [
-                    {
-                      "id": "[resourceId('Microsoft.Network/networkInterfaces', format('{0}-nic-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[copyIndex()]))]"
-                    }
-                  ]
-                },
-                "securityProfile": {},
-                "diagnosticsProfile": {
-                  "bootDiagnostics": {
-                    "enabled": false,
-                    "storageUri": "[parameters('saPrimaryEndpointsBlob')]"
-                  }
-                },
-                "userData": "[variables('userDataScript')]"
-              },
-              "dependsOn": [
-                "r_nics_01"
-              ]
-            },
-            {
-              "copy": {
-                "name": "AzureMonitorLinuxAgent",
-                "count": "[length(range(0, variables('no_of_vms')))]"
-              },
-              "condition": "[parameters('vmParams').isLinux]",
-              "type": "Microsoft.Compute/virtualMachines/extensions",
-              "apiVersion": "2021-07-01",
-              "name": "[format('{0}/{1}', format('{0}-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[range(0, variables('no_of_vms'))[copyIndex()]]), 'AzureMonitorLinuxAgent')]",
-              "location": "[parameters('deploymentParams').location]",
-              "properties": {
-                "publisher": "Microsoft.Azure.Monitor",
-                "type": "AzureMonitorLinuxAgent",
-                "enableAutomaticUpgrade": true,
-                "autoUpgradeMinorVersion": true,
-                "typeHandlerVersion": "1.25",
-                "settings": {
-                  "identifier-name": "mi_res_id",
-                  "identifier-value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_vm'))]"
-                }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Compute/virtualMachines', format('{0}-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[range(0, variables('no_of_vms'))[copyIndex()]]))]"
-              ]
-            },
-            {
-              "copy": {
-                "name": "r_associateDce_To_Vm",
-                "count": "[length(range(0, variables('no_of_vms')))]"
-              },
-              "type": "Microsoft.Insights/dataCollectionRuleAssociations",
-              "apiVersion": "2021-09-01-preview",
-              "scope": "[format('Microsoft.Compute/virtualMachines/{0}', format('{0}-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[range(0, variables('no_of_vms'))[copyIndex()]]))]",
-              "name": "configurationAccessEndpoint",
-              "properties": {
-                "dataCollectionEndpointId": "[parameters('linDataCollectionEndpointId')]",
-                "description": "Send Custom logs to DCR"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Compute/virtualMachines', format('{0}-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[range(0, variables('no_of_vms'))[copyIndex()]]))]"
-              ]
-            },
-            {
-              "copy": {
-                "name": "r_associatestoreEventsDcr_To_Vm",
-                "count": "[length(range(0, variables('no_of_vms')))]"
-              },
-              "type": "Microsoft.Insights/dataCollectionRuleAssociations",
-              "apiVersion": "2021-09-01-preview",
-              "scope": "[format('Microsoft.Compute/virtualMachines/{0}', format('{0}-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[range(0, variables('no_of_vms'))[copyIndex()]]))]",
-              "name": "[format('{0}_storeEventsDcr_{1}', parameters('vmName'), parameters('deploymentParams').global_uniqueness)]",
-              "properties": {
-                "dataCollectionRuleId": "[parameters('storeEventsDcrId')]",
-                "description": "Send Application Logs to DCR"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Compute/virtualMachines', format('{0}-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[range(0, variables('no_of_vms'))[copyIndex()]]))]"
-              ]
-            },
-            {
-              "copy": {
-                "name": "r_associateautomationEventsDcr_To_Vm",
-                "count": "[length(range(0, variables('no_of_vms')))]"
-              },
-              "type": "Microsoft.Insights/dataCollectionRuleAssociations",
-              "apiVersion": "2021-09-01-preview",
-              "scope": "[format('Microsoft.Compute/virtualMachines/{0}', format('{0}-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[range(0, variables('no_of_vms'))[copyIndex()]]))]",
-              "name": "[format('{0}_automationEvents_{1}', parameters('vmName'), parameters('deploymentParams').global_uniqueness)]",
-              "properties": {
-                "dataCollectionRuleId": "[parameters('automationEventsDcrId')]",
-                "description": "Send Automation Logs to DCR"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Compute/virtualMachines', format('{0}-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[range(0, variables('no_of_vms'))[copyIndex()]]))]"
-              ]
-            }
-          ],
-          "outputs": {
-            "module_metadata": {
-              "type": "object",
-              "value": "[parameters('module_metadata')]"
-            },
-            "vmNames": {
-              "type": "array",
-              "copy": {
-                "count": "[length(range(0, variables('no_of_vms')))]",
-                "input": "[format('{0}-{1}', parameters('vmName'), range(0, variables('no_of_vms'))[range(0, variables('no_of_vms'))[copyIndex()]])]"
-              }
-            },
-            "adminUsername": {
-              "type": "string",
-              "value": "[parameters('vmParams').adminUsername]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_blob', parameters('storageAccountParams').storageAccountNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness))]",
-        "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_cosmos_db', parameters('cosmosDbParams').cosmosDbNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness))]",
-        "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_Dce', parameters('dceParams').endpointNamePrefix, parameters('deploymentParams').global_uniqueness))]",
-        "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_Dcr', parameters('logAnalyticsWorkspaceParams').workspaceName, parameters('deploymentParams').global_uniqueness))]",
-        "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_la', parameters('logAnalyticsWorkspaceParams').workspaceName, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness))]",
-        "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_sa', parameters('storageAccountParams').storageAccountNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness))]",
-        "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_uami', parameters('deploymentParams').enterprise_name_suffix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness))]",
-        "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_Vnet', parameters('vnetParams').vnetNamePrefix, parameters('deploymentParams').global_uniqueness))]"
-      ]
-    },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
-      "name": "[format('{0}_{1}_run_cmd', parameters('vmParams').vmNamePrefix, parameters('deploymentParams').global_uniqueness)]",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "deploymentParams": {
-            "value": "[parameters('deploymentParams')]"
-          },
-          "vmParams": {
-            "value": "[parameters('vmParams')]"
-          },
-          "vmNames": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_Vm', parameters('vmParams').vmNamePrefix, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.vmNames.value]"
-          },
-          "repoName": {
-            "value": "[parameters('brandTags').project]"
-          },
-          "tags": {
-            "value": "[parameters('tags')]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.18.4.5664",
-              "templateHash": "9842545197106448042"
-            }
-          },
-          "parameters": {
-            "module_metadata": {
-              "type": "object",
-              "defaultValue": {
-                "module_last_updated": "2023-05-19",
-                "owner": "miztiik@github"
-              }
-            },
-            "vmNames": {
-              "type": "array"
-            },
-            "deploymentParams": {
-              "type": "object"
-            },
-            "repoName": {
-              "type": "string"
-            },
-            "tags": {
-              "type": "object"
-            },
-            "vmParams": {
-              "type": "object"
-            }
-          },
-          "variables": {
-            "no_of_vms": "[parameters('vmParams').vmCount]",
-            "command_to_clone_repo_with_vars": "REPO_NAME=\"REPO_NAME_VAR\" && \\\nGIT_REPO_URL=\"https://github.com/miztiik/$REPO_NAME.git\" && \\\ncd /var && \\\nrm -rf /var/$REPO_NAME && \\\ngit clone $GIT_REPO_URL && \\\ncd /var/$REPO_NAME && \\\nchmod +x /var/$REPO_NAME/modules/vm/bootstrap_scripts/deploy_app.sh && \\\nbash /var/$REPO_NAME/modules/vm/bootstrap_scripts/deploy_app.sh &\n",
-            "command_to_clone_repo": "[replace(variables('command_to_clone_repo_with_vars'), 'REPO_NAME_VAR', parameters('repoName'))]"
-          },
-          "resources": [
-            {
-              "copy": {
-                "name": "r_deploy_script_1",
-                "count": "[length(range(0, variables('no_of_vms')))]"
-              },
-              "type": "Microsoft.Compute/virtualMachines/runCommands",
-              "apiVersion": "2022-03-01",
-              "name": "[format('{0}/{1}', parameters('vmNames')[range(0, variables('no_of_vms'))[copyIndex()]], format('{0}_{1}_script_1', parameters('deploymentParams').enterprise_name_suffix, parameters('deploymentParams').global_uniqueness))]",
-              "location": "[parameters('deploymentParams').location]",
-              "tags": "[parameters('tags')]",
-              "properties": {
-                "asyncExecution": false,
-                "source": {
-                  "script": "[variables('command_to_clone_repo')]"
-                }
-              }
-            }
-          ],
-          "outputs": {
-            "module_metadata": {
-              "type": "object",
-              "value": "[parameters('module_metadata')]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_Vm', parameters('vmParams').vmNamePrefix, parameters('deploymentParams').global_uniqueness))]"
-      ]
-    },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2022-09-01",
       "name": "[format('perms_provider_to_uami_{0}', parameters('deploymentParams').global_uniqueness)]",
       "properties": {
         "expressionEvaluationOptions": {
@@ -2527,6 +1981,27 @@
           },
           "acr_name": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_container_registry', parameters('container_app_params').name_prefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.acr_name.value]"
+          },
+          "saName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_sa', parameters('storageAccountParams').storageAccountNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.saName.value]"
+          },
+          "blobContainerName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_blob', parameters('storageAccountParams').storageAccountNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.blobContainerName.value]"
+          },
+          "cosmos_db_accnt_name": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_cosmos_db', parameters('cosmosDbParams').cosmosDbNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.cosmos_db_accnt_name.value]"
+          },
+          "cosmos_db_name": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_cosmos_db', parameters('cosmosDbParams').cosmosDbNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.cosmos_db_name.value]"
+          },
+          "cosmos_db_container_name": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_cosmos_db', parameters('cosmosDbParams').cosmosDbNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.cosmos_db_container_name.value]"
+          },
+          "svc_bus_ns_name": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_Svc_Bus', parameters('svc_bus_params').name_prefix, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.svc_bus_ns_name.value]"
+          },
+          "svc_bus_q_name": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}_{1}_Svc_Bus', parameters('svc_bus_params').name_prefix, parameters('deploymentParams').global_uniqueness)), '2022-09-01').outputs.svc_bus_q_name.value]"
           }
         },
         "template": {
@@ -2536,7 +2011,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.18.4.5664",
-              "templateHash": "2267559988775508970"
+              "templateHash": "4369490270698061496"
             }
           },
           "parameters": {
@@ -2564,10 +2039,32 @@
             },
             "acr_name": {
               "type": "string"
+            },
+            "svc_bus_ns_name": {
+              "type": "string"
+            },
+            "svc_bus_q_name": {
+              "type": "string"
+            },
+            "saName": {
+              "type": "string"
+            },
+            "blobContainerName": {
+              "type": "string"
+            },
+            "cosmos_db_accnt_name": {
+              "type": "string"
+            },
+            "cosmos_db_name": {
+              "type": "string"
+            },
+            "cosmos_db_container_name": {
+              "type": "string"
             }
           },
           "variables": {
-            "_app_name": "[replace(format('{0}-{1}-{2}-{3}', parameters('deploymentParams').enterprise_name_suffix, parameters('deploymentParams').loc_short_code, parameters('container_app_params').name_prefix, parameters('deploymentParams').global_uniqueness), '_', '')]"
+            "_app_name": "[replace(format('{0}-{1}-{2}-{3}', parameters('deploymentParams').enterprise_name_suffix, parameters('deploymentParams').loc_short_code, parameters('container_app_params').name_prefix, parameters('deploymentParams').global_uniqueness), '_', '')]",
+            "cosmosDbDataContributor_RoleDefinitionId": "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions', parameters('cosmos_db_accnt_name'), '00000000-0000-0000-0000-000000000002')]"
           },
           "resources": [
             {
@@ -2589,8 +2086,8 @@
             },
             {
               "type": "Microsoft.App/containerApps",
-              "apiVersion": "2022-01-01-preview",
-              "name": "[format('con-app-{0}-{1}', parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)]",
+              "apiVersion": "2022-03-01",
+              "name": "[format('c-app-event-producer-{0}-{1}', parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)]",
               "location": "[parameters('deploymentParams').location]",
               "tags": "[parameters('tags')]",
               "identity": {
@@ -2602,22 +2099,27 @@
               "properties": {
                 "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-mgd-env', variables('_app_name')))]",
                 "configuration": {
+                  "activeRevisionsMode": "single",
                   "secrets": [
                     {
                       "name": "registry-password",
                       "value": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('acr_name')), '2022-02-01-preview').passwords[0].value]"
+                    },
+                    {
+                      "name": "svc-bus-connection",
+                      "value": "[format('{0}', listKeys(format('{0}/AuthorizationRules/RootManageSharedAccessKey', resourceId('Microsoft.ServiceBus/namespaces', parameters('svc_bus_ns_name'))), '2021-06-01-preview').primaryConnectionString)]"
                     }
                   ],
                   "registries": [
                     {
                       "server": "[format('{0}.azurecr.io', parameters('acr_name'))]",
-                      "username": "[parameters('acr_name')]",
-                      "passwordSecretRef": "registry-password"
+                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_akane'))]"
                     }
                   ],
                   "ingress": {
                     "external": true,
                     "targetPort": 80,
+                    "transport": "auto",
                     "traffic": [
                       {
                         "latestRevision": true,
@@ -2635,7 +2137,7 @@
                         "name": "http-scaling-rule",
                         "http": {
                           "metadata": {
-                            "concurrentRequests": "3"
+                            "concurrentRequests": "5"
                           }
                         }
                       }
@@ -2647,14 +2149,56 @@
                         {
                           "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
                           "value": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2022-10-01').customerId]"
+                        },
+                        {
+                          "name": "SVC_BUS_FQDN",
+                          "value": "[format('{0}.servicebus.windows.net', parameters('svc_bus_ns_name'))]"
+                        },
+                        {
+                          "name": "SVC_BUS_Q_NAME",
+                          "value": "[parameters('svc_bus_q_name')]"
+                        },
+                        {
+                          "name": "AZURE_CLIENT_ID",
+                          "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_akane')), '2023-01-31').clientId]"
+                        },
+                        {
+                          "name": "TOT_MSGS_TO_PRODUCE",
+                          "value": "15"
                         }
                       ],
-                      "name": "miztiik-flask-app",
-                      "image": "[format('{0}.azurecr.io/miztiik/event-producer:latest', toLower(parameters('acr_name')))]",
+                      "name": "miztiik-event-producer-for-svc-bus-q",
+                      "image": "[format('{0}.azurecr.io/miztiik/event-processor-for-svc-bus-q:latest', toLower(parameters('acr_name')))]",
                       "resources": {
-                        "cpu": "[json('0.5')]",
-                        "memory": "1.0Gi"
-                      }
+                        "cpu": "[json('1.0')]",
+                        "memory": "2.0Gi"
+                      },
+                      "probes": [
+                        {
+                          "type": "startup",
+                          "httpGet": {
+                            "path": "/",
+                            "port": 80
+                          },
+                          "failureThreshold": 3,
+                          "initialDelaySeconds": 10,
+                          "periodSeconds": 10,
+                          "successThreshold": 1,
+                          "timeoutSeconds": 2
+                        },
+                        {
+                          "type": "liveness",
+                          "httpGet": {
+                            "path": "/",
+                            "port": 80
+                          },
+                          "failureThreshold": 3,
+                          "initialDelaySeconds": 10,
+                          "periodSeconds": 10,
+                          "successThreshold": 1,
+                          "timeoutSeconds": 2
+                        }
+                      ]
                     }
                   ]
                 }
@@ -2662,6 +2206,159 @@
               "dependsOn": [
                 "[resourceId('Microsoft.App/managedEnvironments', format('{0}-mgd-env', variables('_app_name')))]"
               ]
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2022-03-01",
+              "name": "[format('c-app-event-consumer-{0}-{1}', parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)]",
+              "location": "[parameters('deploymentParams').location]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_akane')))]": {}
+                }
+              },
+              "properties": {
+                "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-mgd-env', variables('_app_name')))]",
+                "configuration": {
+                  "activeRevisionsMode": "single",
+                  "secrets": [
+                    {
+                      "name": "registry-password",
+                      "value": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('acr_name')), '2022-02-01-preview').passwords[0].value]"
+                    }
+                  ],
+                  "registries": [
+                    {
+                      "server": "[format('{0}.azurecr.io', parameters('acr_name'))]",
+                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_akane'))]"
+                    }
+                  ],
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 80,
+                    "transport": "auto",
+                    "traffic": [
+                      {
+                        "latestRevision": true,
+                        "weight": 100
+                      }
+                    ]
+                  }
+                },
+                "template": {
+                  "scale": {
+                    "minReplicas": 1,
+                    "maxReplicas": 3,
+                    "rules": [
+                      {
+                        "name": "http-scaling-rule",
+                        "http": {
+                          "metadata": {
+                            "concurrentRequests": "5"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "containers": [
+                    {
+                      "env": [
+                        {
+                          "name": "AZURE_CLIENT_ID",
+                          "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_akane')), '2023-01-31').clientId]"
+                        },
+                        {
+                          "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                          "value": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2022-10-01').customerId]"
+                        },
+                        {
+                          "name": "SVC_BUS_FQDN",
+                          "value": "[format('{0}.servicebus.windows.net', parameters('svc_bus_ns_name'))]"
+                        },
+                        {
+                          "name": "SVC_BUS_Q_NAME",
+                          "value": "[parameters('svc_bus_q_name')]"
+                        },
+                        {
+                          "name": "SA_NAME",
+                          "value": "[parameters('saName')]"
+                        },
+                        {
+                          "name": "BLOB_SVC_ACCOUNT_URL",
+                          "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('saName')), '2021-06-01').primaryEndpoints.blob]"
+                        },
+                        {
+                          "name": "BLOB_NAME",
+                          "value": "[parameters('blobContainerName')]"
+                        },
+                        {
+                          "name": "COSMOS_DB_URL",
+                          "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmos_db_accnt_name')), '2022-08-15').documentEndpoint]"
+                        },
+                        {
+                          "name": "COSMOS_DB_NAME",
+                          "value": "[parameters('cosmos_db_name')]"
+                        },
+                        {
+                          "name": "COSMOS_DB_CONTAINER_NAME",
+                          "value": "[parameters('cosmos_db_container_name')]"
+                        },
+                        {
+                          "name": "MAX_MSGS_TO_PROCESS",
+                          "value": "10"
+                        }
+                      ],
+                      "name": "miztiik-event-consumer-for-svc-bus-q",
+                      "image": "[format('{0}.azurecr.io/miztiik/event-processor-for-svc-bus-q:latest', toLower(parameters('acr_name')))]",
+                      "resources": {
+                        "cpu": "[json('0.5')]",
+                        "memory": "1.0Gi"
+                      },
+                      "probes": [
+                        {
+                          "type": "startup",
+                          "httpGet": {
+                            "path": "/",
+                            "port": 80
+                          },
+                          "failureThreshold": 3,
+                          "initialDelaySeconds": 10,
+                          "periodSeconds": 10,
+                          "successThreshold": 1,
+                          "timeoutSeconds": 2
+                        },
+                        {
+                          "type": "liveness",
+                          "httpGet": {
+                            "path": "/",
+                            "port": 80
+                          },
+                          "failureThreshold": 3,
+                          "initialDelaySeconds": 10,
+                          "periodSeconds": 10,
+                          "successThreshold": 1,
+                          "timeoutSeconds": 2
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments', format('{0}-mgd-env', variables('_app_name')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments",
+              "apiVersion": "2021-04-15",
+              "name": "[format('{0}/{1}', parameters('cosmos_db_accnt_name'), guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_akane')), resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmos_db_accnt_name')), variables('cosmosDbDataContributor_RoleDefinitionId')))]",
+              "properties": {
+                "roleDefinitionId": "[variables('cosmosDbDataContributor_RoleDefinitionId')]",
+                "scope": "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmos_db_accnt_name'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uami_name_akane')), '2023-01-31').principalId]"
+              }
             }
           ],
           "outputs": {
@@ -2671,15 +2368,31 @@
             },
             "fqdn": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.App/containerApps', format('con-app-{0}-{1}', parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-01-01-preview').configuration.ingress.fqdn]"
+              "value": "[reference(resourceId('Microsoft.App/containerApps', format('c-app-event-producer-{0}-{1}', parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-03-01').configuration.ingress.fqdn]"
+            },
+            "app_uri": {
+              "type": "string",
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('c-app-event-producer-{0}-{1}', parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-03-01').configuration.ingress.fqdn)]"
+            },
+            "consumer_fqdn": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', format('c-app-event-consumer-{0}-{1}', parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-03-01').configuration.ingress.fqdn]"
+            },
+            "consumer_app_uri": {
+              "type": "string",
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('c-app-event-consumer-{0}-{1}', parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness)), '2022-03-01').configuration.ingress.fqdn)]"
             }
           }
         }
       },
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', format('perms_provider_to_uami_{0}', parameters('deploymentParams').global_uniqueness))]",
+        "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_blob', parameters('storageAccountParams').storageAccountNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness))]",
         "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_container_registry', parameters('container_app_params').name_prefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness))]",
+        "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_cosmos_db', parameters('cosmosDbParams').cosmosDbNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness))]",
         "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_la', parameters('logAnalyticsWorkspaceParams').workspaceName, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness))]",
+        "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_sa', parameters('storageAccountParams').storageAccountNamePrefix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness))]",
+        "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_Svc_Bus', parameters('svc_bus_params').name_prefix, parameters('deploymentParams').global_uniqueness))]",
         "[resourceId('Microsoft.Resources/deployments', format('{0}_{1}_{2}_uami', parameters('deploymentParams').enterprise_name_suffix, parameters('deploymentParams').loc_short_code, parameters('deploymentParams').global_uniqueness))]"
       ],
       "metadata": {

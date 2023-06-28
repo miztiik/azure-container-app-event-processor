@@ -26,19 +26,12 @@ logging.info(f'{GREEN_COLOR}This is green text{RESET_COLOR}')
 
 class GlobalArgs:
     OWNER = "Mystique"
-    VERSION = "2023-06-27"
+    VERSION = "2023-06-28"
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
     EVNT_WEIGHTS = {"success": 80, "fail": 20}
     TRIGGER_RANDOM_FAILURES = os.getenv("TRIGGER_RANDOM_FAILURES", True)
     WAIT_SECS_BETWEEN_MSGS = int(os.getenv("WAIT_SECS_BETWEEN_MSGS", 2))
-    TOT_MSGS_TO_PRODUCE = int(os.getenv("TOT_MSGS_TO_PRODUCE", 10))
-
-    SVC_BUS_CONNECTION_STR = os.getenv("SVC_BUS_CONNECTION_STR")
-    SVC_BUS_FQDN = os.getenv(
-        "SVC_BUS_FQDN", "warehouse-q-svc-bus-ns-002.servicebus.windows.net")
-    SVC_BUS_Q_NAME = os.getenv("SVC_BUS_Q_NAME", "warehouse-q-svc-bus-q-002")
-    SVC_BUS_TOPIC_NAME = os.getenv(
-        "SVC_BUS_TOPIC_NAME", "warehouse-ne-topic-002")
+    TOT_MSGS_TO_PRODUCE = int(os.getenv("TOT_MSGS_TO_PRODUCE", 15))
 
     SA_NAME = os.getenv("SA_NAME", "warehousehuscgs003")
     BLOB_SVC_ACCOUNT_URL = os.getenv(
@@ -54,10 +47,10 @@ class GlobalArgs:
         "COSMOS_DB_CONTAINER_NAME", "store-backend-container-003")
 
     SVC_BUS_FQDN = os.getenv(
-        "SVC_BUS_FQDN", "warehouse-q-svc-bus-ns-002.servicebus.windows.net")
-    SVC_BUS_Q_NAME = os.getenv("SVC_BUS_Q_NAME", "warehouse-q-svc-bus-q-002")
+        "SVC_BUS_FQDN", "warehouse-ne-svc-bus-ns-container-apps-005.servicebus.windows.net")
+    SVC_BUS_Q_NAME = os.getenv("SVC_BUS_Q_NAME", "warehouse-q-005")
     SVC_BUS_TOPIC_NAME = os.getenv(
-        "SVC_BUS_TOPIC_NAME", "warehouse-q-svc-bus-q-002")
+        "SVC_BUS_TOPIC_NAME", "warehouse-ne-topic-002")
 
     EVENT_HUB_FQDN = os.getenv(
         "EVENT_HUB_FQDN", "warehouse-event-hub-ns-partition-processor-003.servicebus.windows.net")
@@ -189,6 +182,8 @@ def evnt_producer():
 
             time.sleep(GlobalArgs.WAIT_SECS_BETWEEN_MSGS)
             logging.info(f"generated_event:{json.dumps(evnt_body)}")
+            print(
+                f"generated_event:{t_msgs} of {GlobalArgs.TOT_MSGS_TO_PRODUCE} {json.dumps(evnt_body)}")
 
             # write to blob
             # _evnt_type = evnt_attr["event_type"]
@@ -268,7 +263,6 @@ def write_to_svc_bus_q(data: dict, _attr):
         azure_log_level = logging.getLogger("azure").setLevel(logging.ERROR)
         credential = DefaultAzureCredential(
             logging_enable=False, logging=azure_log_level)
-
         with ServiceBusClient(GlobalArgs.SVC_BUS_FQDN, credential=credential) as client:
             with client.get_queue_sender(GlobalArgs.SVC_BUS_Q_NAME) as sender:
                 # Sending a single message
@@ -277,7 +271,6 @@ def write_to_svc_bus_q(data: dict, _attr):
                     time_to_live=datetime.timedelta(days=1),
                     application_properties=_attr
                 )
-
                 _r = sender.send_messages(msg_to_send)
                 logging.debug(f"Message sent: {json.dumps(_r)}")
             logging.info(

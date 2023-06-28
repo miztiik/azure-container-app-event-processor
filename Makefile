@@ -19,6 +19,9 @@ deploy: ## Trigger Only Resource deployments & Not Function Code
 func: ## Trigger Only Funtion code deployments
 	sh deployment_scripts/deploy_func.sh
 
+docker: ## Build docker image
+	sh app/container_builds/event_processor_for_svc_bus_queues/build_and_push_img.sh
+
 destroy: ## Delete deployments without confirmation
 	sh deployment_scripts/destroy.sh shiva
 

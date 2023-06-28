@@ -1,14 +1,14 @@
 // SET MODULE DATE
 param module_metadata object = {
-  module_last_updated : '2023-05-19'
+  module_last_updated: '2023-05-19'
   owner: 'miztiik@github'
 }
 
 param deploymentParams object
-param serviceBusParams object
+param svc_bus_params object
 param tags object
 
-var svc_bus_name = replace('${serviceBusParams.serviceBusNamePrefix}-${deploymentParams.loc_short_code}-svc-bus-ns-${deploymentParams.enterprise_name_suffix}-${deploymentParams.global_uniqueness}', '_', '-')
+var svc_bus_name = replace('${svc_bus_params.name_prefix}-${deploymentParams.loc_short_code}-svc-bus-ns-${deploymentParams.enterprise_name_suffix}-${deploymentParams.global_uniqueness}', '_', '-')
 
 resource r_svc_bus_ns 'Microsoft.ServiceBus/namespaces@2022-01-01-preview' = {
   name: svc_bus_name
@@ -19,14 +19,13 @@ resource r_svc_bus_ns 'Microsoft.ServiceBus/namespaces@2022-01-01-preview' = {
     //name: 'Premium'
   }
   properties: {
-    
+
   }
 }
 
-
 resource r_svc_bus_q 'Microsoft.ServiceBus/namespaces/queues@2022-01-01-preview' = {
   parent: r_svc_bus_ns
-  name: '${serviceBusParams.serviceBusNamePrefix}-q-${deploymentParams.global_uniqueness}'
+  name: '${svc_bus_params.name_prefix}-q-${deploymentParams.global_uniqueness}'
   properties: {
     lockDuration: 'PT5M'
     maxSizeInMegabytes: 1024

@@ -40,10 +40,6 @@ class GlobalArgs:
     SVC_BUS_TOPIC_NAME = os.getenv(
         "SVC_BUS_TOPIC_NAME", "warehouse-ne-topic-002")
 
-    EVENT_HUB_FQDN = os.getenv(
-        "EVENT_HUB_FQDN", "warehouse-event-hub-ns-event-hub-streams-002.servicebus.windows.net")
-    EVENT_HUB_NAME = os.getenv("EVENT_HUB_NAME", "store-events-stream-002")
-
     SA_NAME = os.getenv("SA_NAME", "warehousehuscgs003")
     BLOB_SVC_ACCOUNT_URL = os.getenv(
         "BLOB_SVC_ACCOUNT_URL", "https://warehousehuscgs003.blob.core.windows.net")
@@ -225,6 +221,7 @@ def evnt_producer():
         resp["inventory_evnts"] = inventory_evnts
         resp["tot_sales"] = t_sales
         resp["status"] = True
+        # logging.debug(f'{GREEN_COLOR} {{"resp":{json.dumps(resp)}}} {RESET_COLOR}')
 
     except Exception as e:
         logging.error(f"ERROR: {type(e).__name__}: {str(e)}")
@@ -347,12 +344,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         "miztiik_event_processed": False,
         "msg": ""
     }
-
-    # Setup Azure Clients
-    # azure_log_level = logging.getLogger('azure.core.pipeline.policies.http_logging_policy').setLevel(logging.ERROR)
-
-    # Get Config data from App Config
-    # _get_n_set_app_config(credential)
 
     try:
         try:

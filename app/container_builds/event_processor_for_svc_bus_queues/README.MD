@@ -3,12 +3,11 @@
 # Login to Azure Container Registry
 
 ```bash
-export ACR_NAME="containeryard004"
-export IMG_NAME="event-producer"
+export ACR_NAME="containeryard007"
+export IMG_NAME="event-producer-for-svc-bus-q"
 
 az login
 az acr login --name ${ACR_NAME}
-```
 ```
 
 ```bash
@@ -34,7 +33,6 @@ docker push ${ACR_NAME}.azurecr.io/miztiik/${IMG_NAME}:v1
 
 ```bash
 # docker run -it --rm -p 8080:80 mcr.microsoft.com/oss/nginx/nginx:stable
-docker run -it --rm -p 8080:80 ${ACR_NAME}.azurecr.io/miztiik/${IMG_NAME}
-
+docker run -it --rm -p 80:80 ${ACR_NAME}.azurecr.io/miztiik/${IMG_NAME}
 ```
 

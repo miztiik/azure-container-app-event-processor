@@ -13,7 +13,7 @@ param dceParams object
 param brandTags object
 
 param vnetParams object
-param vmParams object
+param svc_bus_params object
 
 param funcParams object
 param acr_params object
@@ -24,7 +24,7 @@ param dateNow string = utcNow('yyyy-MM-dd-hh-mm')
 
 param tags object = union(brandTags, { last_deployed: dateNow })
 
-// Create Identity
+@description('Create Identity')
 module r_uami 'modules/identity/create_uami.bicep' = {
   name: '${deploymentParams.enterprise_name_suffix}_${deploymentParams.loc_short_code}_${deploymentParams.global_uniqueness}_uami'
   params: {
@@ -34,7 +34,7 @@ module r_uami 'modules/identity/create_uami.bicep' = {
   }
 }
 
-// Create Cosmos DB
+@description('Create Cosmos DB')
 module r_cosmosdb 'modules/database/cosmos.bicep' = {
   name: '${cosmosDbParams.cosmosDbNamePrefix}_${deploymentParams.loc_short_code}_${deploymentParams.global_uniqueness}_cosmos_db'
   params: {
@@ -44,7 +44,7 @@ module r_cosmosdb 'modules/database/cosmos.bicep' = {
   }
 }
 
-// Create the Log Analytics Workspace
+@description('Create the Log Analytics Workspace')
 module r_logAnalyticsWorkspace 'modules/monitor/log_analytics_workspace.bicep' = {
   name: '${logAnalyticsWorkspaceParams.workspaceName}_${deploymentParams.loc_short_code}_${deploymentParams.global_uniqueness}_la'
   params: {
@@ -54,7 +54,7 @@ module r_logAnalyticsWorkspace 'modules/monitor/log_analytics_workspace.bicep' =
   }
 }
 
-// Create Storage Account
+@description('Create Storage Account')
 module r_sa 'modules/storage/create_storage_account.bicep' = {
   name: '${storageAccountParams.storageAccountNamePrefix}_${deploymentParams.loc_short_code}_${deploymentParams.global_uniqueness}_sa'
   params: {
@@ -65,7 +65,7 @@ module r_sa 'modules/storage/create_storage_account.bicep' = {
   }
 }
 
-// Create Storage Account - Blob container
+@description('Create Storage Account - Blob container')
 module r_blob 'modules/storage/create_blob.bicep' = {
   name: '${storageAccountParams.storageAccountNamePrefix}_${deploymentParams.loc_short_code}_${deploymentParams.global_uniqueness}_blob'
   params: {
@@ -80,6 +80,17 @@ module r_blob 'modules/storage/create_blob.bicep' = {
     r_sa
     r_logAnalyticsWorkspace
   ]
+}
+
+@description('Create the Service Bus & Queue')
+module r_svc_bus 'modules/integration/create_svc_bus.bicep' = {
+  // scope: resourceGroup(r_rg.name)
+  name: '${svc_bus_params.name_prefix}_${deploymentParams.global_uniqueness}_Svc_Bus'
+  params: {
+    deploymentParams: deploymentParams
+    svc_bus_params: svc_bus_params
+    tags: tags
+  }
 }
 
 // Create Data Collection Endpoint
@@ -133,55 +144,6 @@ module r_vnet 'modules/vnet/create_vnet.bicep' = {
   }
 }
 
-// Create Virtual Machine
-module r_vm 'modules/vm/create_vm.bicep' = {
-  name: '${vmParams.vmNamePrefix}_${deploymentParams.global_uniqueness}_Vm'
-  params: {
-    deploymentParams: deploymentParams
-    uami_name_vm: r_uami.outputs.uami_name_vm
-
-    saName: r_sa.outputs.saName
-    blobContainerName: r_blob.outputs.blobContainerName
-    saPrimaryEndpointsBlob: r_sa.outputs.saPrimaryEndpointsBlob
-
-    vmParams: vmParams
-    vnetName: r_vnet.outputs.vnetName
-
-    logAnalyticsPayGWorkspaceId: r_logAnalyticsWorkspace.outputs.logAnalyticsPayGWorkspaceId
-
-    linDataCollectionEndpointId: r_dataCollectionEndpoint.outputs.linDataCollectionEndpointId
-    storeEventsDcrId: r_dataCollectionRule.outputs.storeEventsDcrId
-    automationEventsDcrId: r_dataCollectionRule.outputs.automationEventsDcrId
-
-    add_to_appln_gw: false
-    appln_gw_name: ''
-    appln_gw_back_end_pool_name: ''
-
-    cosmos_db_accnt_name: r_cosmosdb.outputs.cosmos_db_accnt_name
-
-    tags: tags
-  }
-  dependsOn: [
-    r_vnet
-  ]
-}
-
-// Deploy Script on VM
-module r_deploy_managed_run_cmd 'modules/bootstrap/run_command_on_vm.bicep' = {
-  name: '${vmParams.vmNamePrefix}_${deploymentParams.global_uniqueness}_run_cmd'
-  params: {
-    deploymentParams: deploymentParams
-    vmParams: vmParams
-    vmNames: r_vm.outputs.vmNames
-    repoName: brandTags.project
-
-    tags: tags
-  }
-  dependsOn: [
-    r_vm
-  ]
-}
-
 @description('Add Permissions to UAMI')
 module r_add_perms_to_uami 'modules/identity/assign_perms_to_uami.bicep' = {
   name: 'perms_provider_to_uami_${deploymentParams.global_uniqueness}'
@@ -215,6 +177,17 @@ module r_container_app 'modules/containers/create_container_apps.bicep' = {
     uami_name_akane: r_uami.outputs.uami_name_akane
     logAnalyticsWorkspaceName: r_logAnalyticsWorkspace.outputs.logAnalyticsPayGWorkspaceName
     acr_name: r_container_registry.outputs.acr_name
+
+    saName: r_sa.outputs.saName
+    blobContainerName: r_blob.outputs.blobContainerName
+
+    cosmos_db_accnt_name: r_cosmosdb.outputs.cosmos_db_accnt_name
+    cosmos_db_name: r_cosmosdb.outputs.cosmos_db_name
+    cosmos_db_container_name: r_cosmosdb.outputs.cosmos_db_container_name
+
+    svc_bus_ns_name: r_svc_bus.outputs.svc_bus_ns_name
+    svc_bus_q_name: r_svc_bus.outputs.svc_bus_q_name
+
   }
   dependsOn: [
     r_container_registry

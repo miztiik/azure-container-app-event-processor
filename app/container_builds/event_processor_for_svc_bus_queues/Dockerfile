@@ -1,5 +1,6 @@
 # Use the official Python base image
 FROM python:3.9-alpine
+LABEL Automation_By="Mystique"
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -11,7 +12,7 @@ COPY requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the content
-COPY miztiik-producer-app /app
+COPY miztiik-event-processor-app /app
 
 # Set the environment variables
 ENV FLASK_APP=app.py
@@ -20,5 +21,5 @@ ENV FLASK_APP=app.py
 EXPOSE 80
 
 # Run the command to start uWSGI
-# CMD ["gunicorn", "--bind", "0.0.0.0:80", "app:app"]
-CMD ["gunicorn", "--bind", "0.0.0.0:80", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
+# CMD ["gunicorn", "--bind", "0.0.0.0:80", "--log-level=debug" "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:80", "--workers", "4", "--timeout", "1200", "--access-logfile", "-", "--error-logfile", "-", "app:app"]

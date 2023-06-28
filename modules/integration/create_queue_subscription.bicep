@@ -5,7 +5,7 @@ param module_metadata object = {
 }
 
 param deploymentParams object
-param serviceBusParams object
+param svc_bus_params object
 
 param svc_bus_ns_name string
 param svc_bus_topic_name string
@@ -25,7 +25,7 @@ resource r_svc_bus_topic_ref 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-
 param all_events_subscriber string = 'all-events'
 resource r_topic_subscriber_all_events 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2022-10-01-preview' = {
   parent: r_svc_bus_topic_ref
-  name: '${serviceBusParams.serviceBusNamePrefix}-${all_events_subscriber}-sub-${deploymentParams.global_uniqueness}'
+  name: '${svc_bus_params.name_prefix}-${all_events_subscriber}-sub-${deploymentParams.global_uniqueness}'
   properties: {
     lockDuration: 'PT30S'
     defaultMessageTimeToLive: 'P7D'
@@ -38,7 +38,7 @@ resource r_topic_subscriber_all_events 'Microsoft.ServiceBus/namespaces/topics/s
 
 resource r_topic_subscriber_all_events_filter_rule_1 'Microsoft.ServiceBus/namespaces/topics/subscriptions/rules@2022-10-01-preview' = {
   parent: r_topic_subscriber_all_events
-  name: '${serviceBusParams.serviceBusNamePrefix}-${all_events_subscriber}-rule-${deploymentParams.global_uniqueness}'
+  name: '${svc_bus_params.name_prefix}-${all_events_subscriber}-rule-${deploymentParams.global_uniqueness}'
   properties: {
     filterType: 'SqlFilter'
     sqlFilter: {
@@ -51,7 +51,7 @@ resource r_topic_subscriber_all_events_filter_rule_1 'Microsoft.ServiceBus/names
 param inventory_events_subscriber string = 'inventory-events'
 resource r_topic_subscriber_inventory_events 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2022-10-01-preview' = {
   parent: r_svc_bus_topic_ref
-  name: '${serviceBusParams.serviceBusNamePrefix}-${inventory_events_subscriber}-sub-${deploymentParams.global_uniqueness}'
+  name: '${svc_bus_params.name_prefix}-${inventory_events_subscriber}-sub-${deploymentParams.global_uniqueness}'
   properties: {
     lockDuration: 'PT30S'
     defaultMessageTimeToLive: 'P7D'
@@ -64,7 +64,7 @@ resource r_topic_subscriber_inventory_events 'Microsoft.ServiceBus/namespaces/to
 
 resource r_topic_subscriber_inventory_events_filter_rule_1 'Microsoft.ServiceBus/namespaces/topics/subscriptions/rules@2022-10-01-preview' = {
   parent: r_topic_subscriber_inventory_events
-  name: '${serviceBusParams.serviceBusNamePrefix}-${inventory_events_subscriber}-rule-${deploymentParams.global_uniqueness}'
+  name: '${svc_bus_params.name_prefix}-${inventory_events_subscriber}-rule-${deploymentParams.global_uniqueness}'
   properties: {
     filterType: 'CorrelationFilter'
     correlationFilter: {
@@ -79,7 +79,7 @@ resource r_topic_subscriber_inventory_events_filter_rule_1 'Microsoft.ServiceBus
 param sales_events_subscriber string = 'sale-events'
 resource r_topic_subscriber_sales_events 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2022-10-01-preview' = {
   parent: r_svc_bus_topic_ref
-  name: '${serviceBusParams.serviceBusNamePrefix}-${sales_events_subscriber}-sub-${deploymentParams.global_uniqueness}'
+  name: '${svc_bus_params.name_prefix}-${sales_events_subscriber}-sub-${deploymentParams.global_uniqueness}'
   properties: {
     lockDuration: 'PT30S'
     defaultMessageTimeToLive: 'P7D'
@@ -92,7 +92,7 @@ resource r_topic_subscriber_sales_events 'Microsoft.ServiceBus/namespaces/topics
 
 resource r_topic_subscriber_sales_events_filter_rule_1 'Microsoft.ServiceBus/namespaces/topics/subscriptions/rules@2022-10-01-preview' = {
   parent: r_topic_subscriber_sales_events
-  name: '${serviceBusParams.serviceBusNamePrefix}-${sales_events_subscriber}-rule-${deploymentParams.global_uniqueness}'
+  name: '${svc_bus_params.name_prefix}-${sales_events_subscriber}-rule-${deploymentParams.global_uniqueness}'
   properties: {
     filterType: 'CorrelationFilter'
     correlationFilter: {
@@ -103,12 +103,11 @@ resource r_topic_subscriber_sales_events_filter_rule_1 'Microsoft.ServiceBus/nam
   }
 }
 
-
 // FRAUD DETECTION SUBSCRIBER
 param fraud_detection_subscriber string = 'fraud-detection'
 resource r_topic_subscriber_fraud_detection 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2022-10-01-preview' = {
   parent: r_svc_bus_topic_ref
-  name: '${serviceBusParams.serviceBusNamePrefix}-${fraud_detection_subscriber}-sub-${deploymentParams.global_uniqueness}'
+  name: '${svc_bus_params.name_prefix}-${fraud_detection_subscriber}-sub-${deploymentParams.global_uniqueness}'
   properties: {
     lockDuration: 'PT30S'
     defaultMessageTimeToLive: 'P7D'
@@ -121,7 +120,7 @@ resource r_topic_subscriber_fraud_detection 'Microsoft.ServiceBus/namespaces/top
 
 resource r_topic_subscriber_fraud_detection_filter_rule_1 'Microsoft.ServiceBus/namespaces/topics/subscriptions/rules@2022-10-01-preview' = {
   parent: r_topic_subscriber_fraud_detection
-  name: '${serviceBusParams.serviceBusNamePrefix}-${sales_events_subscriber}-fraud-detector-rule-${deploymentParams.global_uniqueness}'
+  name: '${svc_bus_params.name_prefix}-${sales_events_subscriber}-fraud-detector-rule-${deploymentParams.global_uniqueness}'
   properties: {
     filterType: 'SqlFilter'
     sqlFilter: {
@@ -130,11 +129,9 @@ resource r_topic_subscriber_fraud_detection_filter_rule_1 'Microsoft.ServiceBus/
   }
 }
 
-
 // OUTPUTS
 output module_metadata object = module_metadata
 
 output all_events_subscriber string = r_topic_subscriber_all_events.name
 output inventory_events_subscriber_name string = r_topic_subscriber_inventory_events.name
 output sales_events_subscriber_name string = r_topic_subscriber_sales_events.name
-

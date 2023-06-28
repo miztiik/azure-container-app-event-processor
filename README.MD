@@ -1,18 +1,14 @@
-# Distributed Tracing with OpenTelemetry in Azure
+# Efficient Processing of Events Using Container Apps in Azure
 
-Mystique Enterprise operates web stores that generate a large number of sales and inventory events across multiple locations. These events pass through various systems, and Azure Functions are responsible for processing them. The events are stored in blobs to ensure compliance and support audit requirements. Additionally, the events are persisted in Cosmos DB to facilitate the order orchestration process. However, there are occasional delays in event processing, and Mystique Enterprise wants to identify the root causes of these delays using distributed tracing.
+Mystique Enterprises operates multiple web stores that generate a significant number of events related to sales and inventory. These events need to be processed in a timely and efficient manner. Mystique Enterprises is exploring the use of container apps to handle the event processing workload, enabling scalability and performance optimization. They seek a solution that allows them to seamlessly process store events, while ensuring data integrity and compliance. The goal is to streamline the event processing workflow and achieve faster, reliable, and cost-effective processing of store events without spending time and effort on infrastructure management.
 
 Can you provide guidance on how to accomplish this?
 
 ## 🎯 Solution
 
-To address delays in event processing and enable distributed tracing, Mystique Enterprise can utilize OpenTelemetry to trace events across systems. By instrumenting the code with OpenTelemetry and Azure Application Insights, telemetry data can be captured during event processing. This data can be analyzed using Azure Application Insights to identify areas causing delays and visualize the end-to-end flow of events, allowing for targeted performance optimization in the order processing workflow.
+To achieve efficient processing of events, Mystique Enterprises can utilize Azure Service Bus for reliable event messaging. They can containerize their event processing logic using Container Apps and store the container images in Azure Container Registry. The events can be persisted in Blob storage and Cosmos DB for data storage and management. To ensure secure and controlled access to resources, a Managed Identity can be used. Monitoring for metrics and performance can be implemented using Azure Monitor. This solution enables seamless event processing, scalability, data integrity, and compliance for Mystique Enterprises.
 
-The code will create a trace `miztiik-event-*-trace` and a attribute of `event_id` for each event. When ever the event is persisted to blob a span like this `miztiik_upload_to_blob` will be created. Likewise when interacting with cosmos `miztiik_upload_to_cosmos`. Both these spans will have the following attributes, `event_typ` & `is_return`
-
-Do note that what open telemetry calls a trace shows up a dependancy in App Insights. Checkout this doc for more details on the mapping - [OpenTelemetry to Application Insights mapping](https://learn.microsoft.com/en-us/azure/azure-monitor/app/opentelemetry-overview#opentelemetry)
-
-![Miztiik Automation - Distributed Tracing with OpenTelemetry in Azure](images/miztiik_architecture_open_telemetry_in_azure_001.png)
+![Miztiik Automation - Efficient Processing of Events Using Container Apps in Azure](images/miztiik_architecture_container_apps_001.png)
 
 1. ## 🧰 Prerequisites
 
@@ -30,8 +26,8 @@ Do note that what open telemetry calls a trace shows up a dependancy in App Insi
    - Get the application code
 
      ```bash
-     git clone https://github.com/miztiik/azure-open-telemetry-tracing.git
-     cd azure-event-hub-stream-processor
+     git clone https://github.com/miztiik/azure-container-app-event-processor.git
+     cd azure-container-app-event-processor
      ```
 
 3. ## 🚀 Prepare the local environment
@@ -57,8 +53,20 @@ Do note that what open telemetry calls a trace shows up a dependancy in App Insi
         - This will be used by the Azure Function to interact with other services
      - **Azure Cosmos DB**
         - This will be used by the Azure Function to store the events data
-     - **Python Azure Functions**
-        - **Producer**: `HTTP` Trigger. Customized to send `count` number of events to the service bus, using parameters passed in the query string. `count` defaults to `10`
+     - **Azure Service Bus Queue**
+        - A namespace and a queue will be created. The Azure container apps will use this queue to publish and retrieve events
+     - **Azure Container Registry**
+        - To host the producer and consumer container images
+        - The build scripts at `app/container_builds/event_processor_for_svc_bus_queues/build_and_push_img.sh` will build the container images and push them to ACR.
+        - To streamline the deployment process <ins>without</ins> using DevOps pipelines, the container image needs to be built locally and pushed to ACR using the above script. However, this approach requires separate deployment of the container apps, which will be addressed in the next iteration. It's important to note that the initial deployment will <ins>fail</ins> due to missing images. Once the images are available, redeploy the main stack for a successful deployment.
+     - **Container Apps**
+        - **Producer**: Python Flask app with two routes 
+          - `/` for index page - Will be used for health check and readiness probes
+          - `/event-producer` customized to generate events and ingest them to service bus. The number of event to produce with each request can be configured through environment variable `TOT_MSGS_TO_PRODUCE` defaults to `15`
+        - **Consumer**: Python Flask app with two routes 
+          - `/` for index page - Will be used for health check and readiness probes
+          - `/event-consumer` customized to consume events from service bus and store them in cosmos db. The number of event to consume with each request can be configured through environment variable `MAX_MSGS_TO_PROCESS` defaults to `10`
+        - **Note**: The container apps are configured to use the managed identity to access other resources. The managed identity is configured to have access to the service bus queue, storage account and cosmos db. To get this to work the environment variable `AZURE_CLIENT_ID` needs to be setup with the managed identity client id.
 
       Initiate the deployment with the following command,
 
@@ -74,16 +82,16 @@ Do note that what open telemetry calls a trace shows up a dependancy in App Insi
    - **Trigger the Event Producer function**
 
       ```bash
-      PRODUCER_URL="https://open-telemetry-store-backend-ne-fn-app-002.azurewebsites.net/store-events-producer-fn"
+      PRODUCER_URL="https://c-app-event-producer-ne-007.mangodesert-5dd578ef.northeurope.azurecontainerapps.io/event-producer"
       for i in {1..10}
       do
       echo "Sending event batch $i"
-      curl $PRODUCER_URL?count=30 &
+      curl $PRODUCER_URL &
       sleep 5
       done
       ```
 
-      You should see an output like this, We are sending batch of 30 events every 5 seconds. You can change the batch size and the interval between batches by changing the `count` and `sleep` parameters respectively.
+      You should see an output like this, We are sending batch of events every `5` seconds.
 
       ```json
       Sending event batch 1
@@ -98,15 +106,34 @@ Do note that what open telemetry calls a trace shows up a dependancy in App Insi
 
       As we are batching the upload of telemetry data to application insights, It takes few minutes for the data to show up there. You can check the `Live Metrics` section of the `store-events-producer-fn` function app. 
 
-      ![Miztiik Automation - Distributed Tracing with OpenTelemetry in Azure](images/miztiik_architecture_open_telemetry_in_azure_004.png)
-      ![Miztiik Automation - Distributed Tracing with OpenTelemetry in Azure](images/miztiik_architecture_open_telemetry_in_azure_002.png)
-      ![Miztiik Automation - Distributed Tracing with OpenTelemetry in Azure](images/miztiik_architecture_open_telemetry_in_azure_003.png)
-      ![Miztiik Automation - Distributed Tracing with OpenTelemetry in Azure](images/miztiik_architecture_open_telemetry_in_azure_005.png)
-      ![Miztiik Automation - Distributed Tracing with OpenTelemetry in Azure](images/miztiik_architecture_open_telemetry_in_azure_006.png)
+      ![Miztiik Automation - Efficient Processing of Events Using Container Apps in Azure](images/miztiik_architecture_container_apps_002.png)
+      ![Miztiik Automation - Efficient Processing of Events Using Container Apps in Azure](images/miztiik_architecture_container_apps_003.png)
+      ![Miztiik Automation - Efficient Processing of Events Using Container Apps in Azure](images/miztiik_architecture_container_apps_004.png)
+      ![Miztiik Automation - Efficient Processing of Events Using Container Apps in Azure](images/miztiik_architecture_container_apps_005.png)
+      ![Miztiik Automation - Efficient Processing of Events Using Container Apps in Azure](images/miztiik_architecture_container_apps_006.png)
+      ![Miztiik Automation - Efficient Processing of Events Using Container Apps in Azure](images/miztiik_architecture_container_apps_007.png)
+      ![Miztiik Automation - Efficient Processing of Events Using Container Apps in Azure](images/miztiik_architecture_container_apps_008.png)
+      ![Miztiik Automation - Efficient Processing of Events Using Container Apps in Azure](images/miztiik_architecture_container_apps_009.png)
+
+   - **Trigger the Event Consumer function**
+      ```bash
+      CONSUMER_URL="https://c-app-event-consumer-ne-007.mangodesert-5dd578ef.northeurope.azurecontainerapps.io/event-consumer"
+      for i in {1..10}
+      do
+      echo "Receive event batch $i"
+      curl $CONSUMER_URL &
+      sleep 5
+      done
+      ```     
+
+      ![Miztiik Automation - Efficient Processing of Events Using Container Apps in Azure](images/miztiik_architecture_container_apps_010.png)
+      ![Miztiik Automation - Efficient Processing of Events Using Container Apps in Azure](images/miztiik_architecture_container_apps_011.png)
+      ![Miztiik Automation - Efficient Processing of Events Using Container Apps in Azure](images/miztiik_architecture_container_apps_012.png)
+      ![Miztiik Automation - Efficient Processing of Events Using Container Apps in Azure](images/miztiik_architecture_container_apps_013.png)
 
 6. ## 📒 Conclusion
 
-    In conclusion, this blog showcases the effective utilization of OpenTelemetry in conjunction with Azure services to enhance observability and performance optimization in event-driven architectures. By instrumenting the code with OpenTelemetry and integrating it with Azure Application Insights, Miztiik Enterprises gained valuable insights into the end-to-end flow of events, enabling them to identify and address delays in event processing. The seamless integration of OpenTelemetry with Azure services provides a powerful solution for distributed tracing, enabling developers to pinpoint bottlenecks and improve system performance. With the ability to capture and analyze telemetry data, Miztiik Enterprises can make informed decisions and optimize their event-driven workflows for enhanced fraud detection, data auditability, and overall operational efficiency.
+    In conclusion, this blog highlights the benefits of using container apps in Azure for efficient event processing. By leveraging containerization and Azure services, such as Azure Service Bus, Container Registry, Blob, and Cosmos, Miztiik Enterprises can streamline their event processing workflow, ensuring scalability, reliability, and cost-effectiveness. The use of managed identity and monitoring for metrics further enhances the security and observability of the containerized solution. With this approach, Miztiik Enterprises can optimize their event-driven architecture, achieve faster processing of store events, and eliminate the need for manual infrastructure management.
   
 7. ## 🧹 CleanUp
 
@@ -145,7 +172,7 @@ Thank you for your interest in contributing to our project. Whether it is a bug 
 
 ### 🏷️ Metadata
 
-![miztiik-success-green](https://img.shields.io/badge/Miztiik:Automation:Level-200-blue)
+![miztiik-success-green](https://img.shields.io/badge/Miztiik:Automation:Level-300-orange)
 
 **Level**: 200
 
